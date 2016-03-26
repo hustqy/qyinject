@@ -10,10 +10,10 @@ Notice:	If this code works, it was written by Robert Kuster.
 		Use it on your own risk. No responsibilities for
 		possible damages of even functionality can be taken.
 ***************************************************************/
-
+#include "stdafx.h"
 #include <Windows.h>
 #include "qyinject.h"
-
+#include "processId.h"
 //---------------------------------------------------------------------
 // INJDATA
 // Notice: The data structure being injected.
@@ -161,17 +161,19 @@ int GetWindowTextRemoteW (HANDLE hProcess, HWND hWnd, LPWSTR lpString)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	HANDLE hProcess = 
-			OpenProcess(
+	GetProcessList();
+	DWORD PID = 0;
+	HANDLE hProcess = OpenProcess(
 				PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ,
 				FALSE, PID);		
 
-			if (hProcess != NULL) {
-				MessageBeep(MB_OK);
-				GetWindowTextRemote (hProcess,hWnd,ch);
-				CloseHandle( hProcess );
-			}
-	GetTextRemote (hProcess, hWnd, (BYTE*)lpString, true);
+	/*if (hProcess != NULL) {
+		MessageBeep(MB_OK);
+		GetWindowTextRemote (hProcess,hWnd,ch);
+		CloseHandle( hProcess );
+	}*/
+	
+	
 	return 0;
 }
 
