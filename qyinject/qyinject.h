@@ -1,8 +1,8 @@
 #if !defined INJCODE_H
 #define INJCODE_H
 
-int GetWindowTextRemoteA (HANDLE hProcess, HWND hWnd, LPSTR  lpString);
-int GetWindowTextRemoteW (HANDLE hProcess, HWND hWnd, LPWSTR lpString);
+int GetWindowTextRemoteA (HANDLE hProcess, LPSTR  lpString);
+int GetWindowTextRemoteW (HANDLE hProcess, LPWSTR lpString);
 
 
 #ifdef UNICODE

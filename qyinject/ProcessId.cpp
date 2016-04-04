@@ -111,6 +111,54 @@ BOOL ListProcessModules( DWORD dwPID )
   return( TRUE );
 }
 
+DWORD QyGetProcessID(TCHAR* msg)
+{
+  HANDLE hProcessSnap;
+  PROCESSENTRY32 pe32;
+
+
+  // Take a snapshot of all processes in the system.
+  hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+  if( hProcessSnap == INVALID_HANDLE_VALUE )
+  {
+    printError( TEXT("CreateToolhelp32Snapshot (of processes)") );
+    return( FALSE );
+  }
+
+  // Set the size of the structure before using it.
+  pe32.dwSize = sizeof( PROCESSENTRY32 );
+
+  // Retrieve information about the first process,
+  // and exit if unsuccessful
+  if( !Process32First( hProcessSnap, &pe32 ) )
+  {
+    printError( TEXT("Process32First") ); // show cause of failure
+    CloseHandle( hProcessSnap );          // clean the snapshot object
+    return( FALSE );
+  }
+
+  // Now walk the snapshot of processes, and
+  // display information about each process in turn
+  do
+  {
+	  /*
+    _tprintf( TEXT("\n  Process ID        = 0x%08X"), pe32.th32ProcessID );
+    _tprintf( TEXT("\n  Thread count      = %d"),   pe32.cntThreads );
+    _tprintf( TEXT("\n  Parent process ID = 0x%08X"), pe32.th32ParentProcessID );
+    _tprintf( TEXT("\n  Priority base     = %d"), pe32.pcPriClassBase );
+    */
+	if (!_tcscmp(pe32.szExeFile, msg)){
+		_tprintf( TEXT("\n  get explorer.exe") );
+		break;
+	}
+
+  } while( Process32Next( hProcessSnap, &pe32 ) );
+
+ // CloseHandle( hProcessSnap );
+  
+  return pe32.th32ProcessID;
+}
+
 BOOL ListProcessThreads( DWORD dwOwnerPID ) 
 { 
   HANDLE hThreadSnap = INVALID_HANDLE_VALUE; 

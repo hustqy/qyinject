@@ -8,3 +8,4 @@ extern BOOL  ListProcessModules( DWORD dwPID );
 extern BOOL ListProcessThreads( DWORD dwOwnerPID );
 extern void printError( TCHAR* msg );
 
+extern DWORD QyGetProcessID(TCHAR* msg);
