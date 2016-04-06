@@ -24,21 +24,12 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="qyinject.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="processId.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qyinject.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ProcessId.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
