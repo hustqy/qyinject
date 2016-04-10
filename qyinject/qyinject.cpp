@@ -1,16 +1,17 @@
-
-#pragma comment (linker,"/ENTRY:main")
+//#pragma comment (linker,"/SUBSYSTEM:Windows")
+//#pragma comment (linker,"/ENTRY:main")
 #include <tchar.h>
+#include <stdlib.h>
 #include <Windows.h>
 #include <TlHelp32.h>
-#include <fstream>
+
 #include <iostream>
+
 using namespace std;
 DWORD QyGetProcessID(TCHAR* msg)
 {
   HANDLE hProcessSnap;
   PROCESSENTRY32 pe32;
-
 
   // Take a snapshot of all processes in the system.
   hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
@@ -53,7 +54,7 @@ DWORD QyGetProcessID(TCHAR* msg)
   
   return pe32.th32ProcessID;
 }
-int main(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
 
 
@@ -66,27 +67,23 @@ int main(int argc, _TCHAR* argv[])
 	PIMAGE_SECTION_HEADER pSection;
 	PIMAGE_FILE_HEADER pFileHeader;
 
-	
+	FILE *f;
+	f = fopen("C:\\Users\\qy\\Desktop\\test1\\space.exe","rb");
+	fseek(f,0,SEEK_END);
+	long size = ftell(f);
 
+	fseek(f,0,SEEK_SET);
 
+	char* buf=new char[size+1]; 
+	fread(buf,size,1,f);
+	fclose(f);
 
-	std::ifstream ifile (argv[1], std::ifstream::binary);
-
-	std::filebuf* pbuf = ifile.rdbuf();
-	std::size_t size = pbuf->pubseekoff (0,ifile.end,ifile.in);
-	pbuf->pubseekpos (0,ifile.in);
-
-	char* buf=new char[size]; 
-	pbuf->sgetn (buf,size);
-
-	ifile.close();
 	pDos = (PIMAGE_DOS_HEADER) (buf);
 	pNT = (PIMAGE_NT_HEADERS )(pDos->e_lfanew + (DWORD)buf);
 
 	pOption = (PIMAGE_OPTIONAL_HEADER32 )( &pNT->OptionalHeader);
 	pFileHeader = (PIMAGE_FILE_HEADER) &(pNT->FileHeader);
 	pSection =( PIMAGE_SECTION_HEADER) ((DWORD)(pNT) + sizeof(IMAGE_NT_HEADERS) );
-
 
 	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS,FALSE, PID);		
 
@@ -113,25 +110,25 @@ int main(int argc, _TCHAR* argv[])
 
 	DWORD relSize= pOption->DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size;
 
-	int i =0;
-	while (i < relSize)
+	unsigned int p =0;
+	while (p < relSize)
 	{
-		
 		int num = (curr->SizeOfBlock-sizeof(IMAGE_BASE_RELOCATION) )/sizeof(WORD) ;
 		PWORD entry = (PWORD)((DWORD)reloc + sizeof(IMAGE_BASE_RELOCATION));
+		printf("block 0x%x is relocated\n",curr->VirtualAddress);
 
 		for (int j = 0;j< num ;j++)
 		{
 			WORD offset ;
 			ReadProcessMemory(hProcess,(LPVOID)entry,&offset,sizeof(WORD),0);
-
+			printf("0x%x is relocated\n",offset);
 			if(offset >> 12 == IMAGE_REL_BASED_HIGHLOW)
 			{
-				PDWORD ADDR = (PDWORD) (curr->VirtualAddress+ offset& 0xfff + (DWORD) mapAddress );
+				PDWORD ADDR = (PDWORD) (curr->VirtualAddress+ (DWORD)(offset& 0xfff) + (DWORD) mapAddress );
 
 				DWORD newValue;
 				ReadProcessMemory(hProcess,ADDR,&newValue,4,0);
-				newValue  = *ADDR + delta;
+				newValue +=  delta;
 				WriteProcessMemory(hProcess, ADDR,&newValue,4,0 );
 				
 			}
@@ -139,15 +136,15 @@ int main(int argc, _TCHAR* argv[])
 			
 		}
 
-		i+= curr->SizeOfBlock;
+		p+= curr->SizeOfBlock;
 		reloc = (PIMAGE_BASE_RELOCATION)((DWORD)reloc + curr->SizeOfBlock); 
 		ReadProcessMemory(hProcess,(LPVOID)reloc,curr,sizeof(IMAGE_BASE_RELOCATION),0);
 	}
 
 	GlobalFree(curr);
 
-	PIMAGE_THUNK_DATA ITD;
-	PIMAGE_THUNK_DATA PITD;
+	PIMAGE_THUNK_DATA32 ITD;
+	PIMAGE_THUNK_DATA32 PITD;
 	PIMAGE_IMPORT_BY_NAME IIBN;
 
 	if(pOption->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size>0)
@@ -160,7 +157,7 @@ int main(int argc, _TCHAR* argv[])
 		{
 			
 			DWORD szName=0;
-			CHAR miByte=1;
+			CHAR miByte = 1;
 			for(int i=0;miByte;i++)
 			{
 				szName=i;
@@ -171,30 +168,55 @@ int main(int argc, _TCHAR* argv[])
 			ReadProcessMemory(hProcess,mapAddress+IID->Name,lpName,szName+1,0);
 	
 			HMODULE hLib=LoadLibraryA(lpName);
-			PITD=(PIMAGE_THUNK_DATA)((DWORD)mapAddress+IID->FirstThunk);
-			ITD=(PIMAGE_THUNK_DATA)GlobalAlloc(GPTR,sizeof(IMAGE_THUNK_DATA));
+			if(!hLib){
+				printf( "%s library is not found\n",lpName );
+			}
+			else
+				printf("%s library is found\n",lpName);
+			PITD=(PIMAGE_THUNK_DATA32)((DWORD)mapAddress+IID->FirstThunk);
+			ITD=(PIMAGE_THUNK_DATA32)GlobalAlloc(GPTR,sizeof(IMAGE_THUNK_DATA));
 			ReadProcessMemory(hProcess,PITD,ITD,sizeof(IMAGE_THUNK_DATA),0);
-	
-			for (;ITD->u1.Ordinal;)
+
+			DWORD u ;
+			ReadProcessMemory(hProcess,(PDWORD)PITD,&u,sizeof(DWORD),0);
+
+			while (u != 0)
 			{
 				
-				for(int i=0;miByte;i++)
+				if(u >> 31)
 				{
-					szName=i;
-					LPSTR puntero=mapAddress+ITD->u1.Function+2;
-					puntero+=i;
-					ReadProcessMemory(hProcess,puntero,&miByte,1,0);
+					DWORD lpAPI=(DWORD)GetProcAddress(hLib,(LPCSTR)(u & 0xffff));
+					WriteProcessMemory(hProcess,PITD,&lpAPI,4,0);
 				}
+				else
+				{
+					unsigned int nameSize = 0;
+					CHAR miByte=1;
+					LPSTR puntero=mapAddress + u + 2;
+					while(miByte != 0)
+					{
+						ReadProcessMemory(hProcess,puntero,&miByte,1,0);
+						puntero += 1;
+						nameSize++;
+					}
 
-			
-				IIBN=(PIMAGE_IMPORT_BY_NAME)GlobalAlloc(GPTR,sizeof(IMAGE_IMPORT_BY_NAME)+szName);
-				ReadProcessMemory(hProcess,mapAddress+ITD->u1.Function,IIBN,sizeof(IMAGE_IMPORT_BY_NAME)+szName,0);
+					IIBN=(PIMAGE_IMPORT_BY_NAME)GlobalAlloc(GPTR,sizeof(IMAGE_IMPORT_BY_NAME)+nameSize);
 
-				DWORD lpAPI=(DWORD)GetProcAddress(hLib,(LPCSTR)&IIBN->Name);
-				WriteProcessMemory(hProcess,mapAddress+IID->FirstThunk,&lpAPI,4,0);
+					ReadProcessMemory(hProcess,mapAddress + u,IIBN,sizeof(IMAGE_IMPORT_BY_NAME)+nameSize,0);
+
+
+					DWORD lpAPI=(DWORD)GetProcAddress(hLib,(LPCSTR)(IIBN->Name));
+					if(!lpAPI){
+						printf( "%s function is not found\n",IIBN->Name );
+					}
+					else
+						printf("%s function is fixed\n",IIBN->Name);
+					WriteProcessMemory(hProcess,mapAddress+IID->FirstThunk,&lpAPI,4,0);
+				}
 
 				PITD++;
 				ReadProcessMemory(hProcess,PITD,ITD,sizeof(IMAGE_THUNK_DATA),0);
+				ReadProcessMemory(hProcess,(PDWORD)PITD,&u,sizeof(DWORD),0);
 			}
 			PIID++;
 			ReadProcessMemory(hProcess,(LPVOID)PIID,IID,sizeof(IMAGE_IMPORT_DESCRIPTOR),0);
